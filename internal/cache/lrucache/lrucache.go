@@ -2,6 +2,8 @@ package lrucache
 
 import (
 	"container/list"
+	"sync"
+	"time"
 )
 
 type Item struct {
@@ -10,20 +12,27 @@ type Item struct {
 }
 
 type LRUCache struct {
+	MU       *sync.Mutex
 	Capacity int
 	Items    map[string]*list.Element
 	List     *list.List
 }
 
 func New(n int) *LRUCache {
+	var m sync.Mutex
 	return &LRUCache{
 		Capacity: n,
 		Items:    make(map[string]*list.Element),
 		List:     list.New(),
+		MU:       &m,
 	}
 }
 
 func (c *LRUCache) Add(key string, value string) bool {
+	c.MU.Lock()
+	defer c.MU.Unlock()
+	// для проверки потокобезопасности
+	time.Sleep(1 * time.Second)
 	if data, ok := c.Items[key]; ok {
 		c.List.MoveToFront(data)
 		data.Value.(*Item).Value = value
@@ -45,6 +54,10 @@ func (c *LRUCache) Add(key string, value string) bool {
 }
 
 func (c *LRUCache) Get(key string) (string, bool) {
+	c.MU.Lock()
+	defer c.MU.Unlock()
+	// для проверки потокобезопасности
+	time.Sleep(1 * time.Second)
 	if data, ok := c.Items[key]; ok {
 		c.List.MoveToFront(data)
 		return data.Value.(*Item).Value, true
@@ -53,6 +66,8 @@ func (c *LRUCache) Get(key string) (string, bool) {
 }
 
 func (c *LRUCache) Remove(key string) bool {
+	c.MU.Lock()
+	defer c.MU.Unlock()
 	data, ok := c.Items[key]
 	if ok {
 		item := c.List.Remove(data).(*Item)
